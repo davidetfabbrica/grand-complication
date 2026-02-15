@@ -23,49 +23,68 @@ export default function Home() {
 
   // Load moon phase images on mount
   useEffect(() => {
-    console.log('Starting to load moon phase images...');
-    
     const moonPhaseFiles = [
-      '/New_Moon.svg',
-      '/Waxing_Crescent.svg',
-      '/First_Quarter.svg',
-      '/Waxing_Gibbous.svg',
-      '/Full_Moon.svg',
-      '/Waning_Gibbous.svg',
-      '/Last_Quarter.svg',
-      '/Waning_Crescent.svg'
+      'New_Moon.svg',
+      'Waxing_Crescent.svg',
+      'First_Quarter.svg',
+      'Waxing_Gibbous.svg',
+      'Full_Moon.svg',
+      'Waning_Gibbous.svg',
+      'Last_Quarter.svg',
+      'Waning_Crescent.svg'
     ];
     
     let loadedCount = 0;
     const images: HTMLImageElement[] = [];
     
-    // Load SVGs directly as images (simpler and more reliable)
-    moonPhaseFiles.forEach((file, index) => {
-      const img = new Image();
-      img.onload = () => {
-        loadedCount++;
-        console.log(`✓ Loaded moon phase ${index}: ${file} (${loadedCount}/${moonPhaseFiles.length})`);
-        if (loadedCount === moonPhaseFiles.length) {
-          console.log('✓ All moon phase images loaded successfully!');
-          setMoonImagesLoaded(true);
+    // Load SVGs as data URIs via fetch (more reliable in Next.js)
+    Promise.all(
+      moonPhaseFiles.map((file) => 
+        fetch(`/${file}`)
+          .then(res => {
+            if (!res.ok) throw new Error(`Failed to fetch ${file}`);
+            return res.text();
+          })
+          .then(svgText => {
+            // Convert SVG to data URI
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            return URL.createObjectURL(blob);
+          })
+          .catch(err => {
+            console.error(`Error loading ${file}:`, err);
+            return null;
+          })
+      )
+    ).then((urls) => {
+      urls.forEach((url, index) => {
+        if (url) {
+          const img = new Image();
+          img.onload = () => {
+            loadedCount++;
+            console.log(`Loaded moon phase ${index} (${loadedCount}/${moonPhaseFiles.length})`);
+            if (loadedCount === moonPhaseFiles.length) {
+              console.log('All moon phase images loaded!');
+              setMoonImagesLoaded(true);
+            }
+          };
+          img.onerror = (e) => {
+            console.error(`Failed to create image for phase ${index}:`, e);
+          };
+          img.src = url;
+          images[index] = img;
         }
-      };
-      img.onerror = (e) => {
-        console.error(`✗ Failed to load ${file}:`, e);
-        console.error(`  Attempted path: ${img.src}`);
-        console.error(`  Make sure the SVG files are in your public folder!`);
-      };
-      img.src = file;
-      images[index] = img;
+      });
+      moonPhaseImagesRef.current = images;
     });
     
-    moonPhaseImagesRef.current = images;
-    
-    // Also log after a delay to see final status
-    setTimeout(() => {
-      console.log(`Final status: ${loadedCount}/${moonPhaseFiles.length} images loaded`);
-      console.log('moonImagesLoaded state:', moonImagesLoaded);
-    }, 2000);
+    // Cleanup blob URLs on unmount
+    return () => {
+      images.forEach(img => {
+        if (img.src.startsWith('blob:')) {
+          URL.revokeObjectURL(img.src);
+        }
+      });
+    };
   }, []);
 
   function getMoonPhaseAngle(date: Date) {
@@ -131,6 +150,7 @@ export default function Home() {
     const r = size * 0.42; // Adjusted proportion for larger canvas
 
     function drawGuilloche(breathe: number) {
+      if (!ctx) return;
       ctx.save();
       ctx.translate(c, c);
       
@@ -184,6 +204,7 @@ export default function Home() {
     }
 
     function drawMinuteTrack() {
+      if (!ctx) return;
       for (let i = 0; i < 60; i++) {
         const a = (i * Math.PI) / 30 - Math.PI / 2;
         const outer = r * 0.985;
@@ -198,6 +219,7 @@ export default function Home() {
     }
 
     function drawBatons() {
+      if (!ctx) return;
       const outerRadius = r * 0.88; // Consistent outer radius for all batons
       const normalBatonLength = 20;
       const shortBatonLength = 12; // Shorter for positions with subdials/date
@@ -261,6 +283,7 @@ export default function Home() {
     }
 
     function drawBreguetHand(angle: number, len: number, col: string) {
+      if (!ctx) return;
       ctx.save();
       ctx.translate(c, c);
       ctx.rotate(angle - Math.PI / 2);
@@ -339,6 +362,7 @@ export default function Home() {
     }
 
     function drawSecondsHand(angle: number) {
+      if (!ctx) return;
       const len = r * 0.85;
       const counterbalanceRadius = 5;
       
@@ -388,6 +412,7 @@ export default function Home() {
     }
 
     function drawGMTHand(angle: number) {
+      if (!ctx) return;
       const len = r * 0.65;
       const arrowSize = 8;
       
@@ -429,6 +454,7 @@ export default function Home() {
     }
 
     function drawMoon(date: Date) {
+      if (!ctx) return;
       const rr = r * 0.18;
       const y = c + r * 0.56;
 
@@ -491,6 +517,7 @@ export default function Home() {
     }
 
     function drawSidereal(date: Date, breathe: number) {
+      if (!ctx) return;
       const rr = r * 0.23;
       const x = c - r * 0.55;
 
@@ -546,6 +573,7 @@ export default function Home() {
     }
 
     function drawDate(date: Date) {
+      if (!ctx) return;
       const w = r * 0.3;
       const h = r * 0.2;
       const x = c + r * 0.55 - w / 2;
@@ -624,6 +652,7 @@ export default function Home() {
     }
 
     function drawSwissMade() {
+      if (!ctx) return;
       const swiss = "SWISS";
       const made = "MADE";
       const radius = r * 0.82;
@@ -675,6 +704,7 @@ export default function Home() {
     }
 
     function drawWatch() {
+      if (!ctx) return;
       ctx.clearRect(0, 0, size, size);
       
       // Calculate breathing effect (slow sine wave)
@@ -772,11 +802,13 @@ export default function Home() {
     caseImage.src = 'data:image/svg+xml;base64,' + btoa(`<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg width="100%" height="100%" viewBox="0 0 560 560" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;"><g transform="translate(41.229247311827976, 7.099641577060936) scale(0.2867383512544803)"><g><g><g id="Crown"><g><path d="M1741.285,860.778l2.343,196.779c0,0 5.45,-97.61 4.685,-105.417c-0.764,-7.807 -2.973,-84.136 -7.028,-91.362Z" style="fill:#80635f;"/><path d="M1654.609,860.778l11.713,-18.741l58.565,0l11.713,16.398l-7.028,-4.685l-2.343,7.028l-60.908,0l2.343,-9.37l-14.056,9.37Z" style="fill:#faf4da;"/><path d="M1727.23,853.75l11.713,14.056l0,72.621l0,-4.776l-7.028,-11.622l4.685,-9.37l-7.028,-16.398l2.343,-7.028l-4.685,-9.37l2.343,-9.37l-2.343,-18.741Z" style="fill:#884b2e;stroke:#d2907a;stroke-width:2.5px;"/><path d="M1666.322,1078.64l60.908,0l-7.028,14.056l-49.195,0l-4.685,-14.056Z" style="fill:#f1e0c2;"/><path d="M1666.322,1064.585l65.593,0l-4.685,11.713l-56.223,0l-4.685,-11.713Z" style="fill:#edcca9;"/><path d="M1671.012,1042.033c0,0 57.177,-0.738 57.134,0.276" style="fill:none;stroke:#c08a68;stroke-width:10.42px;"/><path d="M1654.609,980.251l11.713,0l0,7.028l7.028,7.028l-9.37,11.713l9.37,11.713l-11.713,14.056l9.37,9.37l-11.713,7.028l11.713,11.713l-9.37,4.685l7.028,9.37l-9.37,-4.685l2.343,7.028l-11.713,-7.028l0,-105.417l4.685,16.398Z" style="fill:url(#_Linear2);stroke:#291f17;stroke-width:2.5px;"/><path d="M1668.664,851.408l-16.398,16.398l0,93.704l11.713,0l7.028,-14.056l-7.028,-9.37l7.028,-14.056l-7.028,-9.37l7.028,-14.056l-7.028,-7.028l4.685,-14.056l-4.685,-2.343l4.685,-9.37l-4.685,-2.343l4.685,-14.056Z" style="fill:url(#_Linear3);stroke:#291f17;stroke-width:2.5px;"/><path d="M1736.6,935.741l-7.028,9.37l7.028,9.37l0,7.028l-7.028,7.028l7.028,9.37l9.37,2.343l-2.343,-25.769l-7.028,-18.741Z" style="fill:#19160f;stroke:#291f17;stroke-width:2.5px;"/><path d="M1656.951,961.51l-2.343,4.685l0,11.713l11.713,0l7.028,-7.028l-11.713,-9.37l-4.685,0Z" style="fill:#19160f;stroke:#291f17;stroke-width:2.5px;"/><path d="M1675.692,900.602l-9.37,11.713l67.936,2.343l-7.028,-14.056l-51.537,0Z" style="fill:#fffafa;stroke:#fffafa;stroke-width:2.5px;"/><path d="M1675.692,921.686l-7.028,12.09l65.593,-0.377l-7.028,-11.713l-51.537,0Z" style="fill:#fffafa;stroke:#fffafa;stroke-width:2.5px;"/><path d="M1675.692,945.112l-7.028,7.405l65.593,-0.231l-7.028,-7.174l-51.537,0Z" style="fill:#fffafa;stroke:#fffafa;stroke-width:2.5px;"/><path d="M1727.23,1014.607l7.028,-7.405l-65.593,0.231l7.028,7.174l51.537,0Z" style="fill:#f1e0c2;stroke:#fffafa;stroke-width:2.5px;"/><path d="M1724.565,1048.563l7.028,-7.405l-65.593,0.231l7.028,7.174l51.537,0Z" style="fill:#f1e0c2;stroke:#fffafa;stroke-width:2.5px;"/><path d="M1649.924,863.121l18.741,-23.426l53.88,0l21.083,21.083" style="fill:none;stroke:#302013;stroke-width:0.83px;"/><path d="M1652.266,860.778l14.056,-21.083l58.565,0l16.398,23.426l0,196.779l-18.741,32.796l-51.537,2.343l-23.426,-25.769l4.685,-208.492Z" style="fill:none;stroke:#302013;stroke-width:2.5px;"/><path d="M1666.322,860.778l2.343,4.685l0,9.37l2.343,2.343l53.88,0l2.343,-16.398l-60.908,0Z" style="fill:#edc9a9;"/><path d="M1675.692,879.519l-9.37,14.056l65.593,0l-7.028,-14.056l-49.195,0Z" style="fill:#3a1115;stroke:#302013;stroke-width:2.5px;"/><path d="M1722.544,1062.242l9.37,-16.398l-65.593,0l7.028,16.398l49.195,0Z" style="fill:#3a1115;stroke:#302013;stroke-width:2.5px;"/><path d="M1666.322,917.001l7.028,4.685l53.88,-2.343l7.028,-4.685l-67.936,0" style="fill:#e69264;stroke:#f3925f;stroke-width:2.5px;"/><path d="M1666.322,938.084l7.028,4.685l53.88,-2.343l7.028,-4.685l-67.936,0" style="fill:#e69264;stroke:#f3925f;stroke-width:2.5px;"/><path d="M1666.322,959.167l7.028,7.028l53.88,0l7.028,-9.37l-67.936,0" style="fill:#e69264;stroke:#f3925f;stroke-width:2.5px;"/><path d="M1666.322,977.908l6.648,8.946l55.78,-0.347l2.521,-11.772l-64.454,0.386" style="fill:#e69264;stroke:#f3925f;stroke-width:2.5px;"/><path d="M1731.271,1002.422l-4.662,-6.912l-56.055,0.195l-3.874,10.883l64.096,-1.378" style="fill:#e69264;stroke:#f3925f;stroke-width:2.5px;"/><path d="M1666.322,1029.446l67.936,-2.343l-7.028,14.056l-56.223,0l-7.028,-11.713" style="fill:#ac6a4a;stroke:#ac6a4a;stroke-width:2.5px;"/></g></g><path d="M1246.995,1671.32l-2.343,276.427l77.306,2.343l4.685,-332.65" style="fill:url(#_Linear4);stroke:#302013;stroke-width:0.83px;"/><path d="M324.009,1617.44l0,334.993l81.991,0l-2.343,-283.455" style="fill:url(#_Radial5);stroke:#302013;stroke-width:1.04px;"/><path d="M1239.968,1.042l81.991,0l4.685,299.854c0,0 -76.544,-58.78 -84.334,-60.908c-7.79,-2.128 -2.343,-238.946 -2.343,-238.946Z" style="fill:url(#_Linear6);stroke:#302013;stroke-width:1.25px;"/><path d="M324.009,296.21c-1.066,-8.75 2.348,-284.951 2.343,-295.168l84.334,-0l0,236.603" style="fill:url(#_Linear7);stroke:#302013;stroke-width:2.08px;"/><path d="M825.326,127.542c455.108,0 824.597,371.589 824.597,829.282c0,457.693 -369.49,829.282 -824.597,829.282c-455.108,0 -824.597,-371.589 -824.597,-829.282c0,-457.693 369.49,-829.282 824.597,-829.282Zm1.417,89.822c-152.269,0 -290.803,46.574 -405.087,122.147c-34.912,23.087 -64.738,51.285 -94.824,79.882c-139.027,132.145 -226.152,317.838 -226.152,533.122c0,227.36 98.133,422.946 252.231,556.001c126.757,109.448 290.371,177.596 477.101,177.596c246.088,0 457.283,-116.183 591.064,-294.904c91.138,-121.752 148.354,-270.786 148.354,-438.694c0,-168.981 -57.632,-320.637 -150.48,-443.08c-134.836,-177.816 -347.191,-292.072 -592.207,-292.072Z" style="fill:url(#_Linear8);stroke:#302013;stroke-width:1.46px;"/></g></g><defs><linearGradient id="_Linear2" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(11.713029,0,0,0.000002,1654.608818,980.250865)"><stop offset="0" style="stop-color:#722e1b;stop-opacity:1"/><stop offset="0.24" style="stop-color:#7e3a26;stop-opacity:1"/><stop offset="0.32" style="stop-color:#995640;stop-opacity:1"/><stop offset="0.39" style="stop-color:#b4725a;stop-opacity:1"/><stop offset="0.58" style="stop-color:#903d2b;stop-opacity:1"/><stop offset="0.83" style="stop-color:#87301f;stop-opacity:1"/><stop offset="1" style="stop-color:#5e291c;stop-opacity:1"/></linearGradient><linearGradient id="_Linear3" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(18.740846,0,0,110.10247,1652.266212,906.458785)"><stop offset="0" style="stop-color:#722e1b;stop-opacity:1"/><stop offset="0.24" style="stop-color:#7e3a26;stop-opacity:1"/><stop offset="0.32" style="stop-color:#995640;stop-opacity:1"/><stop offset="0.39" style="stop-color:#b4725a;stop-opacity:1"/><stop offset="0.58" style="stop-color:#903d2b;stop-opacity:1"/><stop offset="0.83" style="stop-color:#87301f;stop-opacity:1"/><stop offset="1" style="stop-color:#5e291c;stop-opacity:1"/></linearGradient><linearGradient id="_Linear4" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-77.305989,9.370423,-9.370423,-77.305989,1324.301409,1753.310759)"><stop offset="0" style="stop-color:#f2e5dd;stop-opacity:1"/><stop offset="1" style="stop-color:#d5a581;stop-opacity:1"/></linearGradient><radialGradient id="_Radial5" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(37.481692,-103.074653,103.074653,37.481692,335.721787,1844.672383)"><stop offset="0" style="stop-color:#f2e5dd;stop-opacity:1"/><stop offset="0.31" style="stop-color:#efcbab;stop-opacity:1"/><stop offset="0.39" style="stop-color:#f0c9ac;stop-opacity:1"/><stop offset="0.6" style="stop-color:#edcba8;stop-opacity:1"/><stop offset="1" style="stop-color:#d6a682;stop-opacity:1"/></radialGradient><linearGradient id="_Linear6" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(56.222538,248.316208,-248.316208,56.222538,1246.99542,3.384272)"><stop offset="0" style="stop-color:#f2e5dd;stop-opacity:1"/><stop offset="0.29" style="stop-color:#edcba8;stop-opacity:1"/><stop offset="0.85" style="stop-color:#f0c9ac;stop-opacity:1"/><stop offset="1" style="stop-color:#d5a581;stop-opacity:1"/></linearGradient><linearGradient id="_Linear7" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(63.250355,213.177122,-213.177122,63.250355,338.064393,10.41209)"><stop offset="0" style="stop-color:#f2e5dd;stop-opacity:1"/><stop offset="0.35" style="stop-color:#f0c9ac;stop-opacity:1"/><stop offset="0.54" style="stop-color:#edcba8;stop-opacity:1"/><stop offset="0.77" style="stop-color:#d5a581;stop-opacity:1"/><stop offset="1" style="stop-color:#d5a581;stop-opacity:1"/></linearGradient><linearGradient id="_Linear8" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(316.251775,1548.462393,-1548.462393,316.251775,581.69539,195.477943)"><stop offset="0" style="stop-color:#f2e5dd;stop-opacity:1"/><stop offset="0.19" style="stop-color:#f0c9ac;stop-opacity:1"/><stop offset="0.44" style="stop-color:#f0c9ae;stop-opacity:1"/><stop offset="0.53" style="stop-color:#f0eff4;stop-opacity:1"/><stop offset="0.57" style="stop-color:#edcba8;stop-opacity:1"/><stop offset="0.93" style="stop-color:#d5a581;stop-opacity:1"/><stop offset="1" style="stop-color:#302013;stop-opacity:1"/></linearGradient></defs></g></svg>`);
     
     function drawCase() {
+      if (!ctx) return;
       // Simply draw the SVG case image
       ctx.drawImage(caseImage, 0, 0, size, size);
     }
     
     function drawCrystal(breathe: number) {
+      if (!ctx) return;
       // Sapphire crystal dome - very subtle layers
       ctx.save();
       
