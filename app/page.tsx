@@ -471,21 +471,27 @@ export default function Home() {
       ctx.clip();
       
       // Get and draw the appropriate moon phase SVG if images are loaded
-      if (moonImagesLoaded && moonPhaseImagesRef.current.length > 0) {
-        const phaseIndex = getMoonPhaseImage(moonAge);
-        const moonPhaseImg = moonPhaseImagesRef.current[phaseIndex];
-        
-        // Debug: log once per second (not every frame)
-        if (Math.floor(date.getTime() / 1000) % 10 === 0) {
-          console.log(`Moon age: ${moonAge.toFixed(2)} days, Phase index: ${phaseIndex}`);
-        }
-        
-        // Draw the SVG centered in the aperture
-        // SVG is 90x90px, aperture diameter is ~85px at r=240
-        const moonSize = rr * 2; // Match aperture diameter
-        
-        if (moonPhaseImg && moonPhaseImg.complete) {
-          ctx.drawImage(
+     if (moonImagesLoaded && moonPhaseImagesRef.current.length > 0) {
+  const phaseIndex = getMoonPhaseImage(moonAge);
+  const moonPhaseImg = moonPhaseImagesRef.current[phaseIndex];
+  
+  // Debug: log once per second (not every frame)
+  if (Math.floor(date.getTime() / 1000) % 10 === 0) {
+    console.log(`Moon age: ${moonAge.toFixed(2)} days, Phase index: ${phaseIndex}, Image exists: ${!!moonPhaseImg}`);
+  }
+  
+  // Draw the SVG centered in the aperture
+  const moonSize = rr * 2;
+  
+  if (moonPhaseImg) {  // ← REMOVE THE .complete CHECK
+    ctx.drawImage(
+      moonPhaseImg,
+      c - rr,
+      y - rr,
+      moonSize,
+      moonSize
+    );
+  }
             moonPhaseImg,
             c - rr,      // x position (centered)
             y - rr,      // y position (centered)
