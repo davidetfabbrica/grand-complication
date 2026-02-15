@@ -40,7 +40,7 @@ export default function Home() {
     // Load SVGs as data URIs via fetch (more reliable in Next.js)
     Promise.all(
       moonPhaseFiles.map((file) => 
-        fetch(`/${file}`)
+        fetch(`/grand-complication/${file}`)
           .then(res => {
             if (!res.ok) throw new Error(`Failed to fetch ${file}`);
             return res.text();
